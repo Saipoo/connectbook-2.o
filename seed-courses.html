@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Courses - CourseMaster</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        .info-box p {
+            color: #555;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 15px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+        .result.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 CourseMaster Seed Tool</h1>
+        <p class="subtitle">Add 25 dummy courses to your database instantly</p>
+
+        <div class="info-box">
+            <h3>📋 What will this do?</h3>
+            <p>This will add 25 professional courses across 11 categories to your database. The courses will be published and ready for students to enroll!</p>
+        </div>
+
+        <div class="info-box">
+            <h3>⚠️ Important</h3>
+            <p><strong>Make sure you're logged in as a Teacher or Admin</strong> in your main application before clicking the button below. The courses will be created under your account.</p>
+        </div>
+
+        <button class="btn" id="seedBtn" onclick="seedCourses()">
+            🚀 Add 25 Dummy Courses
+        </button>
+
+        <button class="btn btn-secondary" id="checkBtn" onclick="checkCourses()">
+            📊 Check Current Course Count
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #667eea;">Processing...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        function getToken() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showResult('error', '❌ Error: You must be logged in as a Teacher or Admin. Please login first at http://localhost:5173 and then try again.');
+                return null;
+            }
+            return token;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('seedBtn').disabled = show;
+            document.getElementById('checkBtn').disabled = show;
+        }
+
+        function showResult(type, message, stats = null) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            
+            let html = `<p>${message}</p>`;
+            
+            if (stats) {
+                html += `
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-label">Total Courses</div>
+                            <div class="stat-value">${stats.count || 0}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Published</div>
+                            <div class="stat-value">${stats.count || 0}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultDiv.innerHTML = html;
+        }
+
+        async function seedCourses() {
+            const token = getToken();
+            if (!token) return;
+
+            showLoading(true);
+            document.getElementById('result').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/courses/seed-dummy-courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showResult('success', `✅ ${data.message}`, { count: data.count });
+                } else {
+                    showResult('error', `❌ ${data.message || 'Failed to seed courses'}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showResult('error', `❌ Network error: ${error.message}. Make sure your backend is running on port 5000.`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function checkCourses() {
+            const token = getToken();
+            if (!token) return;
+
+            showLoading(true);
+            document.getElementById('result').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/courses/all`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const count = data.courses ? data.courses.length : 0;
+                    const published = data.courses ? data.courses.filter(c => c.published).length : 0;
+                    
+                    if (count === 0) {
+                        showResult('info', '📭 No courses found in database. Click "Add 25 Dummy Courses" to seed!');
+                    } else {
+                        showResult('success', `📚 Found ${count} course(s) in database!`, { count, published });
+                    }
+                } else {
+                    showResult('error', `❌ ${data.message || 'Failed to fetch courses'}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showResult('error', `❌ Network error: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Check courses on page load
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                checkCourses();
+            } else {
+                showResult('info', '⚠️ Please login at http://localhost:5173 first, then refresh this page.');
+            }
+        });
+    </script>
+</body>
+</html>

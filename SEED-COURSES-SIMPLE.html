@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Courses - SIMPLE VERSION</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Seed 25 Dummy Courses</h1>
+        
+        <div class="warning">
+            <strong>⚠️ IMPORTANT:</strong> You must be logged in as a <strong>Teacher or Admin</strong> in your main app first!
+            <br><br>
+            <strong>Steps:</strong>
+            <ol>
+                <li>Go to <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+                <li>Login as Teacher or Admin</li>
+                <li>Come back to this page</li>
+                <li>Click the button below</li>
+            </ol>
+        </div>
+
+        <button onclick="checkStatus()" id="checkBtn">1️⃣ Check if I'm Logged In</button>
+        <button onclick="seedCourses()" id="seedBtn" disabled>2️⃣ Add 25 Courses to Database</button>
+        <button onclick="checkCourses()" id="verifyBtn" disabled>3️⃣ Verify Courses Added</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        function showMessage(type, message) {
+            const result = document.getElementById('result');
+            result.className = type;
+            result.style.display = 'block';
+            result.innerHTML = message;
+        }
+
+        async function checkStatus() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (!token || !user) {
+                showMessage('error', `
+                    ❌ <strong>Not Logged In!</strong><br><br>
+                    Please:<br>
+                    1. Open <a href="http://localhost:5173" target="_blank">http://localhost:5173</a><br>
+                    2. Login as Teacher or Admin<br>
+                    3. Come back here and click this button again
+                `);
+                return;
+            }
+
+            try {
+                const userObj = JSON.parse(user);
+                const role = userObj.role;
+                
+                if (role !== 'teacher' && role !== 'admin') {
+                    showMessage('error', `
+                        ❌ <strong>Wrong Role!</strong><br><br>
+                        You're logged in as: <strong>${role}</strong><br>
+                        But you need to be: <strong>Teacher or Admin</strong><br><br>
+                        Please logout and login as Teacher or Admin.
+                    `);
+                    return;
+                }
+
+                showMessage('success', `
+                    ✅ <strong>Perfect!</strong><br><br>
+                    Logged in as: <strong>${userObj.name}</strong><br>
+                    Role: <strong>${role}</strong><br><br>
+                    You can now click the <strong>"Add 25 Courses"</strong> button!
+                `);
+                
+                document.getElementById('seedBtn').disabled = false;
+                
+            } catch (error) {
+                showMessage('error', '❌ Error parsing user data. Please login again.');
+            }
+        }
+
+        async function seedCourses() {
+            const btn = document.getElementById('seedBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Adding courses...';
+            
+            showMessage('info', '⏳ Adding 25 courses to database...');
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/courses/seed-dummy-courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showMessage('success', `
+                        ✅ <strong>SUCCESS!</strong><br><br>
+                        ${data.message}<br><br>
+                        <strong>Total courses:</strong> ${data.count}<br><br>
+                        Now click the <strong>"Verify Courses"</strong> button to confirm!
+                    `);
+                    document.getElementById('verifyBtn').disabled = false;
+                } else {
+                    showMessage('error', `
+                        ❌ <strong>Error:</strong> ${data.message || 'Failed to seed courses'}<br><br>
+                        Check the browser console (F12) for more details.
+                    `);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', `
+                    ❌ <strong>Network Error!</strong><br><br>
+                    ${error.message}<br><br>
+                    <strong>Make sure:</strong><br>
+                    1. Your backend is running on port 5000<br>
+                    2. You're logged in<br>
+                    3. Check browser console (F12) for details
+                `);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '2️⃣ Add 25 Courses to Database';
+            }
+        }
+
+        async function checkCourses() {
+            const btn = document.getElementById('verifyBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Checking...';
+            
+            showMessage('info', '⏳ Checking database...');
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/courses/all`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const courses = data.courses || [];
+                    const count = courses.length;
+                    
+                    if (count === 0) {
+                        showMessage('error', `
+                            ⚠️ <strong>No Courses Found!</strong><br><br>
+                            The database is empty. Click <strong>"Add 25 Courses"</strong> button.
+                        `);
+                    } else {
+                        // Group by category
+                        const byCategory = {};
+                        courses.forEach(c => {
+                            byCategory[c.category] = (byCategory[c.category] || 0) + 1;
+                        });
+                        
+                        let categoryList = '<ul>';
+                        for (const [cat, cnt] of Object.entries(byCategory)) {
+                            categoryList += `<li><strong>${cat}:</strong> ${cnt} courses</li>`;
+                        }
+                        categoryList += '</ul>';
+                        
+                        showMessage('success', `
+                            ✅ <strong>Database Has ${count} Courses!</strong><br><br>
+                            <strong>Breakdown by category:</strong><br>
+                            ${categoryList}
+                            <br>
+                            <strong>✨ Now test in your app:</strong><br>
+                            1. Go to <a href="http://localhost:5173" target="_blank">http://localhost:5173</a><br>
+                            2. Login as <strong>Student</strong><br>
+                            3. Click <strong>"Browse Courses"</strong> or <strong>"CourseMaster"</strong><br>
+                            4. You should see all ${count} courses! 🎉
+                        `);
+                    }
+                } else {
+                    showMessage('error', `❌ Error: ${data.message || 'Failed to fetch courses'}`);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', `❌ Network Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '3️⃣ Verify Courses Added';
+            }
+        }
+    </script>
+</body>
+</html>
