@@ -61,17 +61,7 @@ When you restart the backend server, you should see:
 ✅ MongoDB Connected Successfully
 ```
 
-Then when you start an interview session (first time the service is used):
 
-```
-🔍 Checking Gemini API Key...
-📝 API Key exists: true
-📏 API Key length: 39
-🔑 API Key (first 10 chars): AIzaSyCqWs...
-🧹 After trim - API Key length: 39
-🚀 Attempting to initialize Gemini AI...
-✅ Gemini AI initialized successfully
-✅ API Key is valid and ready to use
 ```
 
 ## Testing Steps
@@ -104,6 +94,3 @@ Then when you start an interview session (first time the service is used):
 
 ---
 
-**The Gemini API should now work perfectly!** 🎉
-
-The API key `AIzaSyCqWsR7LSyfq3Y_HhdngN2pO1MUFJWKIWk` will be properly loaded and the AI will generate real interview questions and evaluations.
