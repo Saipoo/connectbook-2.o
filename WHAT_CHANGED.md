@@ -4,12 +4,12 @@
 
 You were right! Your backend is already running and connected to **MongoDB Atlas** via your `.env` file:
 ```
-MONGODB_URI=mongodb+srv://alltimebest68:Poorna%40123@cluster0...
+MONGODB_URI=
 ```
 
 But the seeding scripts (`seedCourses.js`, `checkCourses.js`, `setupCourses.js`) were trying to connect to:
 ```
-mongodb://localhost:27017/connectbook
+mongodb:
 ```
 
 This failed because:
