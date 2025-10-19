@@ -205,7 +205,7 @@ async function gradeAnswerWithGemini(questionPaperText, answerKeyText, studentAn
     console.log(`📏 Text lengths - Question: ${questionPaperText.length}, Answer Key: ${answerKeyText.length}, Student: ${studentAnswerText.length}`);
     
     const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: 'models/gemini-1.5-flash' });
+    const model = ai.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
 
     const prompt = `
 You are an expert educational evaluator and grader for ${subject}. Your task is to evaluate a student's answer by comparing it with the provided question paper and answer key.

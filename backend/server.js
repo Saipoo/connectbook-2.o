@@ -1,6 +1,16 @@
 // Load environment variables FIRST (before any other imports)
 import dotenv from 'dotenv';
-dotenv.config();
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Explicitly load .env file from backend directory
+dotenv.config({ path: join(__dirname, '.env') });
+
+console.log('🔧 Loading .env from:', join(__dirname, '.env'));
+console.log('🔑 GEMINI_API_KEY loaded:', !!process.env.GEMINI_API_KEY);
 
 import express from 'express';
 import mongoose from 'mongoose';
@@ -19,9 +29,15 @@ import meetingRoutes from './routes/meetingRoutes.js';
 import gradeRoutes from './routes/gradeRoutes.js';
 import courseRoutes from './routes/courseRoutes.js';
 import parentRoutes from './routes/parentRoutes.js';
+import interviewRoutes from './routes/interviewRoutes.js';
+import internshipRoutes from './routes/internshipRoutes.js';
+import hackathonRoutes from './routes/hackathonRoutes.js';
+import studyPlannerRoutes from './routes/studyPlannerRoutes.js';
+import careerAdvisorRoutes from './routes/careerAdvisorRoutes.js';
 
-// Import seed function
+// Import seed functions
 import { seedDummyCourses } from './seedData.js';
+import { seedInternshipsAndHackathons } from './seedInternshipsHackathonsAuto.js';
 
 // Initialize Express app
 const app = express();
@@ -53,6 +69,9 @@ const connectDB = async () => {
     
     // Auto-seed dummy courses on startup
     await seedDummyCourses();
+    
+    // Auto-seed internships and hackathons on startup
+    await seedInternshipsAndHackathons();
     
   } catch (error) {
     console.error('❌ MongoDB Connection Error:', error.message);
@@ -159,6 +178,11 @@ app.use('/api/mentor/connect/meeting', meetingRoutes);
 app.use('/api/grades', gradeRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/parents', parentRoutes);
+app.use('/api/interview', interviewRoutes);
+app.use('/api/internships', internshipRoutes);
+app.use('/api/hackathons', hackathonRoutes);
+app.use('/api/study-planner', studyPlannerRoutes);
+app.use('/api/career', careerAdvisorRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

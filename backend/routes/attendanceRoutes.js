@@ -52,9 +52,13 @@ router.get('/logs', protect, authorize('teacher', 'admin'), async (req, res) => 
 router.get('/student/:usn', protect, async (req, res) => {
   try {
     const { usn } = req.params;
+    console.log('📊 Fetching attendance for USN:', usn);
+    console.log('👤 User role:', req.userRole);
+    console.log('🔗 User linkedStudentUSN:', req.user.linkedStudentUSN);
 
     // Authorization check
     if (req.userRole === 'student' && req.user.usn !== usn.toUpperCase()) {
+      console.log('❌ Student unauthorized');
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view this student\'s attendance'
@@ -62,6 +66,7 @@ router.get('/student/:usn', protect, async (req, res) => {
     }
 
     if (req.userRole === 'parent' && req.user.linkedStudentUSN !== usn.toUpperCase()) {
+      console.log('❌ Parent unauthorized:', req.user.linkedStudentUSN, '!==', usn.toUpperCase());
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view this student\'s attendance'
@@ -69,7 +74,9 @@ router.get('/student/:usn', protect, async (req, res) => {
     }
 
     // Get attendance logs
+    console.log('📊 Querying AttendanceLog for:', usn.toUpperCase());
     const logs = await AttendanceLog.find({ usn: usn.toUpperCase() }).sort({ date: -1, time: -1 });
+    console.log('📊 Found', logs.length, 'attendance logs');
 
     // Calculate statistics
     const totalClasses = logs.length;

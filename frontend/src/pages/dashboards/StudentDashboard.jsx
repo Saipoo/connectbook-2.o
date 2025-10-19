@@ -15,7 +15,14 @@ import {
   XCircle,
   TrendingUp,
   History,
-  BookOpen
+  BookOpen,
+  MessageSquare,
+  Briefcase,
+  Award,
+  Code,
+  Trophy,
+  Target,
+  Brain
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -125,6 +132,51 @@ const StudentDashboard = () => {
               to="/dashboard/student/attendance-history"
               icon={History}
               label="Attendance History"
+            />
+            <SidebarLink
+              to="/mentor-connect"
+              icon={MessageSquare}
+              label="Mentor Connect"
+            />
+            <SidebarLink
+              to="/dashboard/student/grade-master"
+              icon={TrendingUp}
+              label="GradeMaster"
+            />
+            <SidebarLink
+              to="/dashboard/student/course-master"
+              icon={BookOpen}
+              label="CourseMaster"
+            />
+            <SidebarLink
+              to="/dashboard/student/interview"
+              icon={Briefcase}
+              label="Interview Simulator"
+            />
+            <SidebarLink
+              to="/dashboard/student/internship"
+              icon={Code}
+              label="Internship Simulator"
+            />
+            <SidebarLink
+              to="/dashboard/student/hackathon"
+              icon={Trophy}
+              label="Hackathon Challenges"
+            />
+            <SidebarLink
+              to="/dashboard/student/study-planner"
+              icon={Brain}
+              label="Study Planner"
+            />
+            <SidebarLink
+              to="/dashboard/student/career-advisor"
+              icon={Target}
+              label="Career Advisor"
+            />
+            <SidebarLink
+              to="/dashboard/student/certificates"
+              icon={Award}
+              label="Certificates"
             />
             <button
               onClick={logout}

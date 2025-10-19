@@ -14,7 +14,10 @@ import {
   Moon,
   FileText,
   TrendingUp,
-  Video
+  Video,
+  Briefcase,
+  Code,
+  Trophy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -131,6 +134,31 @@ const TeacherDashboard = () => {
               to="/mentor-connect"
               icon={Video}
               label="Mentor Connect"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/grade-evaluator"
+              icon={TrendingUp}
+              label="GradeEvaluator"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/course-creator"
+              icon={BookOpen}
+              label="Course Creator"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/interview-evaluations"
+              icon={Briefcase}
+              label="Interview Evaluations"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/internship-reports"
+              icon={Code}
+              label="Internship Reports"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/hackathon-reports"
+              icon={Trophy}
+              label="Hackathon Reports"
             />
             <button
               onClick={logout}
@@ -250,6 +278,24 @@ const TeacherDashboard = () => {
               <Users className="w-12 h-12 mb-4" />
               <h3 className="text-xl font-bold mb-2">Course Dashboard</h3>
               <p className="opacity-90">Monitor course enrollments & completions</p>
+            </Link>
+
+            <Link
+              to="/dashboard/teacher/internship-reports"
+              className="card hover:scale-105 transition-transform cursor-pointer bg-gradient-to-br from-blue-600 to-indigo-700 text-white"
+            >
+              <Code className="w-12 h-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Internship Reports</h3>
+              <p className="opacity-90">View student internship progress</p>
+            </Link>
+
+            <Link
+              to="/dashboard/teacher/hackathon-reports"
+              className="card hover:scale-105 transition-transform cursor-pointer bg-gradient-to-br from-green-600 to-teal-700 text-white"
+            >
+              <Trophy className="w-12 h-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Hackathon Reports</h3>
+              <p className="opacity-90">Monitor hackathon participation</p>
             </Link>
           </motion.div>
 

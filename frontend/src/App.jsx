@@ -27,6 +27,21 @@ import CourseMaster from './pages/student/CourseMaster';
 import CourseCreator from './pages/teacher/CourseCreator';
 import CourseDashboard from './pages/teacher/CourseDashboard';
 import StudentCourseDashboard from './pages/student/StudentCourseDashboard';
+import InterviewSimulator from './pages/student/InterviewSimulator';
+import LiveInterviewSession from './pages/student/LiveInterviewSession';
+import InterviewResults from './pages/student/InterviewResults';
+import TeacherInterviewEvaluations from './pages/teacher/TeacherInterviewEvaluations';
+import InternshipReports from './pages/teacher/InternshipReports';
+import HackathonReports from './pages/teacher/HackathonReports';
+import InternshipSimulator from './pages/student/internship/InternshipSimulator';
+import InternshipWorkspace from './pages/student/internship/InternshipWorkspace';
+import TaskSubmission from './pages/student/internship/TaskSubmission';
+import HackathonChallenges from './pages/student/hackathon/HackathonChallenges';
+import HackathonDetails from './pages/student/hackathon/HackathonDetails';
+import ProjectRoom from './pages/student/hackathon/ProjectRoom';
+import Leaderboard from './pages/student/hackathon/Leaderboard';
+import StudyPlanner from './pages/student/StudyPlanner';
+import CareerAdvisor from './pages/student/CareerAdvisor';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -82,6 +97,72 @@ function App() {
               <CertificatesPage />
             </ProtectedRoute>
           } />
+          <Route path="/dashboard/student/interview" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <InterviewSimulator />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/interview/session/:sessionId" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <LiveInterviewSession />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/interview/results/:reportId" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <InterviewResults />
+            </ProtectedRoute>
+          } />
+          
+          {/* Internship Routes */}
+          <Route path="/dashboard/student/internship" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <InternshipSimulator />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/internship/:enrollmentId/workspace" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <InternshipWorkspace />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/internship/task/:taskId" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <TaskSubmission />
+            </ProtectedRoute>
+          } />
+
+          {/* Hackathon Routes */}
+          <Route path="/dashboard/student/hackathon" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <HackathonChallenges />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/hackathon/:hackathonId" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <HackathonDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/hackathon/:hackathonId/room" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <ProjectRoom />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/hackathon/:hackathonId/leaderboard" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Leaderboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Study Planner & Career Advisor Routes */}
+          <Route path="/dashboard/student/study-planner" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudyPlanner />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/career-advisor" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <CareerAdvisor />
+            </ProtectedRoute>
+          } />
           
           {/* Teacher Routes */}
           <Route path="/dashboard/teacher" element={
@@ -112,6 +193,26 @@ function App() {
           <Route path="/dashboard/teacher/course-dashboard" element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <CourseDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/interview-evaluations" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <TeacherInterviewEvaluations />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/interview-report/:reportId" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <InterviewResults />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/internship-reports" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <InternshipReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/hackathon-reports" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <HackathonReports />
             </ProtectedRoute>
           } />
 
