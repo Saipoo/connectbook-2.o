@@ -13,12 +13,12 @@
 ### Issue 1: Wrong MongoDB Connection
 The 3 scripts I created earlier were trying to connect to:
 ```javascript
-mongoose.connect('mongodb://localhost:27017/connectbook')
+mongoose.connect('')
 ```
 
 But your actual database is on **MongoDB Atlas**:
 ```javascript
-MONGODB_URI=mongodb+srv://alltimebest68:...@cluster0...
+MONGODB_URI=
 ```
 
 **Result:** Scripts failed with `ECONNREFUSED` error
