@@ -5,6 +5,17 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
+  safelist: [
+    // Real-Time Updates category colors
+    'bg-blue-100', 'bg-blue-600', 'text-blue-800', 'text-blue-600', 'border-blue-300', 'hover:bg-blue-50',
+    'bg-purple-100', 'bg-purple-600', 'text-purple-800', 'text-purple-600', 'border-purple-300', 'hover:bg-purple-50',
+    'bg-green-100', 'bg-green-600', 'text-green-800', 'text-green-600', 'border-green-300', 'hover:bg-green-50',
+    'bg-pink-100', 'bg-pink-600', 'text-pink-800', 'text-pink-600', 'border-pink-300', 'hover:bg-pink-50',
+    'bg-orange-100', 'bg-orange-600', 'text-orange-800', 'text-orange-600', 'border-orange-300', 'hover:bg-orange-50',
+    'bg-yellow-100', 'bg-yellow-600', 'text-yellow-800', 'text-yellow-600', 'border-yellow-300', 'hover:bg-yellow-50',
+    'bg-indigo-100', 'bg-indigo-600', 'text-indigo-800', 'text-indigo-600', 'border-indigo-300', 'hover:bg-indigo-50',
+    'bg-gray-100', 'bg-gray-600', 'text-gray-800', 'text-gray-600', 'border-gray-300', 'hover:bg-gray-50',
+  ],
   theme: {
     extend: {
       colors: {

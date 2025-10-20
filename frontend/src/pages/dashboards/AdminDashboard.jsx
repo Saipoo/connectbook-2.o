@@ -217,6 +217,13 @@ const AdminDashboard = () => {
               <Download className="w-5 h-5" />
               Export Report
             </button>
+            <a
+              href="/dashboard/admin/confessions"
+              className="btn btn-primary flex items-center gap-2 bg-gradient-to-r from-red-500 to-purple-600 hover:from-red-600 hover:to-purple-700"
+            >
+              <Shield className="w-5 h-5" />
+              Confessions
+            </a>
           </div>
         </div>
 

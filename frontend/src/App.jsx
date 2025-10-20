@@ -42,12 +42,33 @@ import ProjectRoom from './pages/student/hackathon/ProjectRoom';
 import Leaderboard from './pages/student/hackathon/Leaderboard';
 import StudyPlanner from './pages/student/StudyPlanner';
 import CareerAdvisor from './pages/student/CareerAdvisor';
+import ResumeBuilder from './pages/student/ResumeBuilder';
+import StudentLectures from './pages/student/StudentLectures';
+import RealTimeUpdates from './pages/student/RealTimeUpdates';
+import TeacherLectures from './pages/teacher/TeacherLectures';
+import FAQPage from './pages/FAQPage_Simple';
+import AboutPage from './pages/AboutPage';
+import TeacherConfessionPage from './pages/TeacherConfessionPage';
+import ParentWellbeingPage from './pages/ParentWellbeingPage';
+import AdminConfessionPage from './pages/AdminConfessionPage';
+import MyConfessionsPage from './pages/MyConfessionsPage';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
+import FloatingChatbot from './components/chatbot/FloatingChatbot';
+
+// Hook to get user role
+import { useState, useEffect } from 'react';
 
 function App() {
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setUserRole(user.role);
+  }, []);
+
   return (
     <div className="min-h-screen">
       <Routes>
@@ -163,6 +184,36 @@ function App() {
               <CareerAdvisor />
             </ProtectedRoute>
           } />
+          <Route path="/dashboard/student/resume-builder" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <ResumeBuilder />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/lectures" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentLectures />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/updates" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <RealTimeUpdates />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/faq" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <FAQPage userRole="student" />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/about" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <AboutPage userRole="student" />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/student/my-confessions" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <MyConfessionsPage />
+            </ProtectedRoute>
+          } />
           
           {/* Teacher Routes */}
           <Route path="/dashboard/teacher" element={
@@ -215,6 +266,26 @@ function App() {
               <HackathonReports />
             </ProtectedRoute>
           } />
+          <Route path="/dashboard/teacher/lectures" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <TeacherLectures />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/faq" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <FAQPage userRole="teacher" />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/about" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <AboutPage userRole="teacher" />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/teacher/confessions" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <TeacherConfessionPage />
+            </ProtectedRoute>
+          } />
 
           {/* Parent Routes */}
           <Route path="/dashboard/parent" element={
@@ -232,11 +303,31 @@ function App() {
               <CertificatesPage />
             </ProtectedRoute>
           } />
+          <Route path="/dashboard/parent/faq" element={
+            <ProtectedRoute allowedRoles={['parent']}>
+              <FAQPage userRole="parent" />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/parent/about" element={
+            <ProtectedRoute allowedRoles={['parent']}>
+              <AboutPage userRole="parent" />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/parent/student-wellbeing" element={
+            <ProtectedRoute allowedRoles={['parent']}>
+              <ParentWellbeingPage />
+            </ProtectedRoute>
+          } />
 
           {/* Admin Routes */}
           <Route path="/dashboard/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/admin/confessions" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminConfessionPage />
             </ProtectedRoute>
           } />
 
@@ -281,6 +372,9 @@ function App() {
         },
       }}
     />
+
+      {/* Floating Chatbot - Available on all pages for authenticated users */}
+      {userRole && <FloatingChatbot userRole={userRole} />}
   </div>
   );
 }

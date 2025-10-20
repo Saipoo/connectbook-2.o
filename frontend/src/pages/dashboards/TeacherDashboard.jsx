@@ -17,7 +17,11 @@ import {
   Video,
   Briefcase,
   Code,
-  Trophy
+  Trophy,
+  Film,
+  HelpCircle,
+  Info,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -159,6 +163,26 @@ const TeacherDashboard = () => {
               to="/dashboard/teacher/hackathon-reports"
               icon={Trophy}
               label="Hackathon Reports"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/lectures"
+              icon={Film}
+              label="Lecture Notes"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/faq"
+              icon={HelpCircle}
+              label="FAQs & Help"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/about"
+              icon={Info}
+              label="About ConnectBook"
+            />
+            <SidebarLink
+              to="/dashboard/teacher/confessions"
+              icon={MessageSquare}
+              label="Student Confessions"
             />
             <button
               onClick={logout}

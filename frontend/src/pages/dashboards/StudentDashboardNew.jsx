@@ -18,6 +18,7 @@ import {
   Scan
 } from 'lucide-react';
 import DashboardLayout from '../../components/DashboardLayout';
+import TodaysHighlights from '../../components/dashboard/TodaysHighlights';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -40,6 +41,7 @@ const StudentDashboardNew = () => {
     { icon: MessageSquare, label: 'Mentor Connect', path: '/mentor-connect' },
     { icon: FileText, label: 'GradeMaster', path: '/dashboard/student/grade-master' },
     { icon: BookOpen, label: 'CourseMaster', path: '/dashboard/student/course-master' },
+    { icon: TrendingUp, label: 'Real-Time Updates', path: '/dashboard/student/updates', badge: true },
     { icon: Award, label: 'Certificates', path: '/dashboard/student/certificates' },
     { divider: true, label: 'Actions' },
     { icon: User, label: 'Register Face', path: '/dashboard/student/face-register' },
@@ -236,6 +238,9 @@ const StudentDashboardNew = () => {
             onClick={() => navigate('/dashboard/student/certificates')}
           />
         </div>
+
+        {/* Today's Highlights Widget */}
+        <TodaysHighlights />
 
         {/* Recent Activities */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

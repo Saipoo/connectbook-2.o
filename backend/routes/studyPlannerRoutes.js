@@ -498,14 +498,23 @@ router.put('/goal/:goalId', protect, authorize('student'), async (req, res) => {
 // @access  Private (Student)
 router.post('/generate-schedule', protect, authorize('student'), async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, preferences } = req.body;
 
-    const studyPlan = await StudyPlan.findById(planId);
+    console.log('Generate schedule request:', { planId, preferences, usn: req.user.usn });
+
+    // If no planId, try to find the latest study plan
+    let studyPlan;
+    if (planId) {
+      studyPlan = await StudyPlan.findById(planId);
+    } else {
+      // Find the most recent study plan for this student
+      studyPlan = await StudyPlan.findOne({ usn: req.user.usn }).sort({ createdAt: -1 });
+    }
 
     if (!studyPlan) {
       return res.status(404).json({
         success: false,
-        message: 'Study plan not found'
+        message: 'Study plan not found. Please create a study plan first.'
       });
     }
 
@@ -520,21 +529,45 @@ router.post('/generate-schedule', protect, authorize('student'), async (req, res
     // Get student's academic data
     const grades = await Grade.find({ usn: req.user.usn }).sort({ createdAt: -1 }).limit(10);
 
-    // Prepare student data for AI
+    // Get preferences from request body (from wizard) or use existing
+    const userPreferences = preferences || req.body.preferences || studyPlan.preferences || {};
+
+    // Prepare student data for AI with enhanced preferences
     const studentData = {
       usn: req.user.usn,
       name: req.user.name,
       semester: studyPlan.semester,
       weeklyGoalHours: studyPlan.weeklyGoalHours,
       weakSubjects: studyPlan.weakSubjects,
+      subjects: userPreferences.subjects || [],
       tasks: studyPlan.tasks.filter(t => t.status !== 'completed'),
-      preferences: studyPlan.preferences,
+      upcomingExams: Array.isArray(userPreferences.upcomingExams) 
+        ? userPreferences.upcomingExams 
+        : (typeof userPreferences.upcomingExams === 'string' 
+          ? userPreferences.upcomingExams.split(',').map(e => e.trim()).filter(e => e) 
+          : []),
+      assignments: studyPlan.tasks.filter(t => t.type === 'assignment' && t.status !== 'completed'),
+      preferences: {
+        studyHoursPerDay: userPreferences.studyHoursPerDay || 4,
+        preferredStudyTime: userPreferences.preferredStudyTime || 'flexible',
+        breakDuration: userPreferences.breakDuration || 15,
+        studyPreferences: userPreferences.studyPreferences || ''
+      },
       recentGrades: grades.map(g => ({
         subject: g.subject,
         marks: g.marks,
-        totalMarks: g.totalMarks
+        totalMarks: g.totalMarks,
+        percentage: ((g.marks / g.totalMarks) * 100).toFixed(1)
       }))
     };
+
+    // Update study plan preferences
+    if (req.body.preferences) {
+      studyPlan.preferences = {
+        ...studyPlan.preferences,
+        ...userPreferences
+      };
+    }
 
     // Generate schedule using AI
     const scheduleResult = await generateWeeklySchedule(studentData);
@@ -553,13 +586,76 @@ router.post('/generate-schedule', protect, authorize('student'), async (req, res
     
     // Save schedule to study plan
     freshStudyPlan.weeklySchedule = scheduleResult.schedule;
+
+    // Convert schedule slots into tasks with specific due dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Create tasks from schedule (exclude breaks)
+    scheduleResult.schedule.forEach((daySchedule, scheduleIndex) => {
+      // Calculate the actual date for this day
+      const dayName = daySchedule.day;
+      const targetDayIndex = daysOfWeek.indexOf(dayName);
+      
+      // Calculate days until target day
+      let daysUntil = targetDayIndex - currentDayIndex;
+      if (daysUntil < 0) daysUntil += 7; // Next week if day has passed
+      
+      const taskDate = new Date(today);
+      taskDate.setDate(taskDate.getDate() + daysUntil);
+
+      // Process slots (exclude break type)
+      daySchedule.slots.forEach(slot => {
+        if (slot.type !== 'break' && slot.subject !== 'Break') {
+          // Parse time to set specific due time
+          const [hours, minutes] = slot.endTime.split(':');
+          const dueDate = new Date(taskDate);
+          dueDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+          // Only add if it's a future date or today
+          if (dueDate >= new Date()) {
+            // Map AI slot type to valid task types
+            const validTaskType = slot.type === 'study' ? 'practice' : 
+                                 (slot.type === 'revision' ? 'revision' : 
+                                 (slot.type === 'project' ? 'project' : 
+                                 (slot.type === 'exam-prep' ? 'exam-prep' : 'practice')));
+
+            freshStudyPlan.tasks.push({
+              title: `${slot.subject} - ${slot.activity}`,
+              description: `Scheduled study session: ${slot.activity}`,
+              subject: slot.subject,
+              dueDate: dueDate,
+              priority: 'medium',
+              type: validTaskType,
+              status: 'pending',
+              aiGenerated: true,
+              estimatedDuration: calculateDuration(slot.startTime, slot.endTime)
+            });
+          }
+        }
+      });
+    });
+
     await freshStudyPlan.save();
 
     res.status(200).json({
       success: true,
-      message: 'Weekly schedule generated successfully',
-      data: scheduleResult.schedule
+      message: 'Weekly schedule and tasks generated successfully',
+      data: {
+        schedule: scheduleResult.schedule,
+        tasksCreated: freshStudyPlan.tasks.filter(t => t.aiGenerated).length
+      }
     });
+
+    // Helper function to calculate duration in minutes
+    function calculateDuration(startTime, endTime) {
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      return (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    }
   } catch (error) {
     console.error('Error generating schedule:', error);
     res.status(500).json({

@@ -13,7 +13,10 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  MessageCircle,
+  Send,
+  X
 } from 'lucide-react';
 
 const CareerAdvisor = () => {
@@ -22,6 +25,12 @@ const CareerAdvisor = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [analyzing, setAnalyzing] = useState(false);
+  
+  // AI Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -151,6 +160,61 @@ const CareerAdvisor = () => {
     }
   };
 
+  // AI Chat functions
+  const sendChatMessage = async () => {
+    if (!chatMessage.trim()) return;
+
+    const userMessage = chatMessage.trim();
+    setChatMessage('');
+    
+    // Add user message to chat
+    const newHistory = [...chatHistory, { role: 'user', content: userMessage }];
+    setChatHistory(newHistory);
+
+    try {
+      setChatLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.post(
+        `${API_URL}/api/career/chat`,
+        { 
+          message: userMessage,
+          chatHistory: newHistory
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setChatHistory([
+          ...newHistory,
+          { role: 'assistant', content: response.data.data.message }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      alert('Failed to send message. Please try again.');
+      // Remove user message if failed
+      setChatHistory(chatHistory);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleChatKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  };
+
+  const suggestedQuestions = [
+    "What career path is best for me?",
+    "How can I improve my career readiness?",
+    "What skills should I focus on learning?",
+    "How do I prepare for job interviews?",
+    "What companies hire for my chosen path?"
+  ];
+
   const getMatchColor = (score) => {
     if (score >= 80) return 'text-green-600 bg-green-50 border-green-200';
     if (score >= 60) return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -167,22 +231,260 @@ const CareerAdvisor = () => {
     return colors[importance] || colors.optional;
   };
 
+  const formatSalary = (salaryData) => {
+    if (!salaryData) return 'Not specified';
+    
+    // If it's already a string, return it
+    if (typeof salaryData === 'string') return salaryData;
+    
+    // If it's an object with min/max
+    if (salaryData.min && salaryData.max) {
+      const currency = salaryData.currency || 'INR';
+      return `${currency} ${salaryData.min?.toLocaleString()} - ${salaryData.max?.toLocaleString()}`;
+    }
+    
+    // If it's an object with just currency
+    if (salaryData.currency) {
+      return salaryData.currency;
+    }
+    
+    return 'Not specified';
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-600"></div>
-      </div>
+      <>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+        
+        {/* Floating AI Chat Button */}
+        <button
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 z-50"
+          title="Chat with AI Career Advisor"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
+
+        {/* AI Chat Modal */}
+        {showChat && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+              {/* Chat Header */}
+              <div className="flex items-center justify-between p-4 border-b bg-indigo-600 text-white rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6" />
+                  <div>
+                    <h3 className="font-bold text-lg">AI Career Advisor</h3>
+                    <p className="text-xs text-indigo-100">Get personalized career guidance</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowChat(false)}
+                  className="text-white hover:bg-indigo-700 p-2 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <MessageCircle className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">Ask me anything about your career!</p>
+                    
+                    {/* Suggested Questions */}
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-500 mb-2">Try these questions:</p>
+                      {suggestedQuestions.map((question, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setChatMessage(question);
+                            setTimeout(() => sendChatMessage(), 100);
+                          }}
+                          className="block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm transition"
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-lg p-3 ${
+                          msg.role === 'user'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 rounded-lg p-3">
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-4 border-t bg-gray-50 rounded-b-xl">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyPress={handleChatKeyPress}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    disabled={chatLoading}
+                  />
+                  <button
+                    onClick={sendChatMessage}
+                    disabled={chatLoading || !chatMessage.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
   if (!dashboardData) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Failed to load career advisor</p>
+      <>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Failed to load career advisor</p>
+          </div>
         </div>
-      </div>
+        
+        {/* Floating AI Chat Button */}
+        <button
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 z-50"
+          title="Chat with AI Career Advisor"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
+
+        {/* AI Chat Modal - Same as above */}
+        {showChat && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b bg-indigo-600 text-white rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6" />
+                  <div>
+                    <h3 className="font-bold text-lg">AI Career Advisor</h3>
+                    <p className="text-xs text-indigo-100">Get personalized career guidance</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowChat(false)}
+                  className="text-white hover:bg-indigo-700 p-2 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <MessageCircle className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">Ask me anything about your career!</p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-500 mb-2">Try these questions:</p>
+                      {suggestedQuestions.map((question, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setChatMessage(question);
+                            setTimeout(() => sendChatMessage(), 100);
+                          }}
+                          className="block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm transition"
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-lg p-3 ${
+                          msg.role === 'user'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 rounded-lg p-3">
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-4 border-t bg-gray-50 rounded-b-xl">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyPress={handleChatKeyPress}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    disabled={chatLoading}
+                  />
+                  <button
+                    onClick={sendChatMessage}
+                    disabled={chatLoading || !chatMessage.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -375,10 +677,10 @@ const CareerAdvisor = () => {
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
                             <div
                               className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: `${readinessScore.breakdown.technical}%` }}
+                              style={{ width: `${readinessScore?.breakdown?.technical || 0}%` }}
                             />
                           </div>
-                          <span className="text-sm font-medium">{readinessScore.breakdown.technical}%</span>
+                          <span className="text-sm font-medium">{readinessScore?.breakdown?.technical || 0}%</span>
                         </div>
                       </div>
 
@@ -388,10 +690,10 @@ const CareerAdvisor = () => {
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
                             <div
                               className="bg-green-600 h-2 rounded-full"
-                              style={{ width: `${readinessScore.breakdown.softSkills}%` }}
+                              style={{ width: `${readinessScore?.breakdown?.softSkills || 0}%` }}
                             />
                           </div>
-                          <span className="text-sm font-medium">{readinessScore.breakdown.softSkills}%</span>
+                          <span className="text-sm font-medium">{readinessScore?.breakdown?.softSkills || 0}%</span>
                         </div>
                       </div>
 
@@ -401,15 +703,15 @@ const CareerAdvisor = () => {
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
                             <div
                               className="bg-purple-600 h-2 rounded-full"
-                              style={{ width: `${readinessScore.breakdown.experience}%` }}
+                              style={{ width: `${readinessScore?.breakdown?.experience || 0}%` }}
                             />
                           </div>
-                          <span className="text-sm font-medium">{readinessScore.breakdown.experience}%</span>
+                          <span className="text-sm font-medium">{readinessScore?.breakdown?.experience || 0}%</span>
                         </div>
                       </div>
                     </div>
 
-                    {readinessScore.strengths && readinessScore.strengths.length > 0 && (
+                    {readinessScore?.strengths && readinessScore.strengths.length > 0 && (
                       <div className="mt-4">
                         <div className="text-sm font-medium text-green-700 mb-2">✅ Strengths:</div>
                         <ul className="space-y-1">
@@ -423,7 +725,7 @@ const CareerAdvisor = () => {
                       </div>
                     )}
 
-                    {readinessScore.areasToImprove && readinessScore.areasToImprove.length > 0 && (
+                    {readinessScore?.areasToImprove && readinessScore.areasToImprove.length > 0 && (
                       <div className="mt-4">
                         <div className="text-sm font-medium text-orange-700 mb-2">📈 Areas to Improve:</div>
                         <ul className="space-y-1">
@@ -464,7 +766,7 @@ const CareerAdvisor = () => {
 
                               <div className="flex items-center gap-4 mt-3 text-sm">
                                 <span className="font-semibold">Match: {path.matchScore}%</span>
-                                <span>💰 {path.salaryRange}</span>
+                                <span>💰 {formatSalary(path.salaryRange || path.averageSalary)}</span>
                               </div>
 
                               {path.requiredSkills && path.requiredSkills.length > 0 && (
@@ -573,30 +875,36 @@ const CareerAdvisor = () => {
                   <div className="mt-8">
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">All Recommendations</h3>
                     <div className="space-y-3">
-                      {profile.recommendedPaths.map((path, index) => (
-                        <div key={index} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-semibold">{path.title}</div>
-                              <div className="text-sm text-gray-600 mt-1">{path.description}</div>
-                              <div className="flex items-center gap-4 mt-2 text-sm">
-                                <span className="text-indigo-600 font-medium">
-                                  Match: {path.matchScore}%
-                                </span>
-                                <span className="text-gray-600">
-                                  💰 {path.salaryRange}
-                                </span>
+                      {profile.recommendedPaths.map((rec, index) => {
+                        // Handle nested structure: { path: {...}, matchScore, reasoning }
+                        const pathData = rec.path || rec;
+                        const matchScore = rec.matchScore || pathData.matchScore;
+                        
+                        return (
+                          <div key={index} className="border rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-semibold">{pathData.title}</div>
+                                <div className="text-sm text-gray-600 mt-1">{pathData.description}</div>
+                                <div className="flex items-center gap-4 mt-2 text-sm">
+                                  <span className="text-indigo-600 font-medium">
+                                    Match: {matchScore}%
+                                  </span>
+                                  <span className="text-gray-600">
+                                    💰 {formatSalary(pathData.salaryRange || pathData.averageSalary)}
+                                  </span>
+                                </div>
                               </div>
+                              <button
+                                onClick={() => chooseCareerPath(pathData.title)}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm"
+                              >
+                                Choose
+                              </button>
                             </div>
-                            <button
-                              onClick={() => chooseCareerPath(path.title)}
-                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm"
-                            >
-                              Choose
-                            </button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -780,6 +1088,117 @@ const CareerAdvisor = () => {
           </div>
         </div>
       </div>
+
+      {/* Floating AI Chat Button */}
+      <button
+        onClick={() => setShowChat(true)}
+        className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 z-40"
+        title="Chat with AI Career Advisor"
+      >
+        <MessageCircle className="w-6 h-6" />
+      </button>
+
+      {/* AI Chat Modal */}
+      {showChat && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-indigo-600 text-white rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-6 h-6" />
+                <div>
+                  <h3 className="font-bold text-lg">AI Career Advisor</h3>
+                  <p className="text-xs text-indigo-100">Get personalized career guidance</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowChat(false)}
+                className="text-white hover:bg-indigo-700 p-2 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageCircle className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">Ask me anything about your career!</p>
+                  
+                  {/* Suggested Questions */}
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500 mb-2">Try these questions:</p>
+                    {suggestedQuestions.map((question, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setChatMessage(question);
+                          setTimeout(() => sendChatMessage(), 100);
+                        }}
+                        className="block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm transition"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                chatHistory.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        msg.role === 'user'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-lg p-3">
+                    <div className="flex gap-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="p-4 border-t bg-gray-50 rounded-b-xl">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  onKeyPress={handleChatKeyPress}
+                  placeholder="Type your message..."
+                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={chatLoading}
+                />
+                <button
+                  onClick={sendChatMessage}
+                  disabled={chatLoading || !chatMessage.trim()}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

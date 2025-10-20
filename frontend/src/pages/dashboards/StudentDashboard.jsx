@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   ScanFace,
@@ -22,10 +22,17 @@ import {
   Code,
   Trophy,
   Target,
-  Brain
+  Brain,
+  FileText,
+  Video,
+  Newspaper,
+  HelpCircle,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import TodaysHighlights from '../../components/dashboard/TodaysHighlights';
+import ConfessionModal from '../../components/ConfessionModal';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -34,6 +41,7 @@ const StudentDashboard = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [confessionModalOpen, setConfessionModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalClasses: 0,
@@ -174,9 +182,34 @@ const StudentDashboard = () => {
               label="Career Advisor"
             />
             <SidebarLink
+              to="/dashboard/student/resume-builder"
+              icon={FileText}
+              label="Resume Builder"
+            />
+            <SidebarLink
+              to="/dashboard/student/lectures"
+              icon={Video}
+              label="Lecture Notes"
+            />
+            <SidebarLink
+              to="/dashboard/student/updates"
+              icon={Newspaper}
+              label="Real-Time Updates"
+            />
+            <SidebarLink
               to="/dashboard/student/certificates"
               icon={Award}
               label="Certificates"
+            />
+            <SidebarLink
+              to="/dashboard/student/faq"
+              icon={HelpCircle}
+              label="FAQs & Help"
+            />
+            <SidebarLink
+              to="/dashboard/student/about"
+              icon={Info}
+              label="About ConnectBook"
             />
             <button
               onClick={logout}
@@ -211,12 +244,37 @@ const StudentDashboard = () => {
               </div>
             </div>
 
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-            </button>
+            <div className="flex items-center space-x-3">
+              {/* Confession Box Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setConfessionModalOpen(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                title="Share your concerns confidentially"
+              >
+                <Brain className="w-5 h-5" />
+                <span className="hidden md:inline">Confession Box</span>
+              </motion.button>
+
+              {/* My Confessions Button */}
+              <Link
+                to="/dashboard/student/my-confessions"
+                className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 border-purple-500 text-purple-600 dark:text-purple-400 rounded-xl font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all"
+                title="View your confession status"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="hidden md:inline">My Confessions</span>
+              </Link>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -253,6 +311,15 @@ const StudentDashboard = () => {
               bgColor="bg-purple-50 dark:bg-purple-900/20"
             />
           </div>
+
+          {/* Today's Highlights Widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <TodaysHighlights />
+          </motion.div>
 
           {/* Quick Actions */}
           <motion.div
@@ -426,6 +493,12 @@ const StudentDashboard = () => {
           </motion.div>
         </main>
       </div>
+
+      {/* Confession Modal */}
+      <ConfessionModal 
+        isOpen={confessionModalOpen} 
+        onClose={() => setConfessionModalOpen(false)} 
+      />
     </div>
   );
 };

@@ -34,10 +34,20 @@ import internshipRoutes from './routes/internshipRoutes.js';
 import hackathonRoutes from './routes/hackathonRoutes.js';
 import studyPlannerRoutes from './routes/studyPlannerRoutes.js';
 import careerAdvisorRoutes from './routes/careerAdvisorRoutes.js';
+import lectureRoutes from './routes/lectureRoutes.js';
+import updateRoutes from './routes/updateRoutes.js';
+import chatbotRoutes from './routes/chatbotRoutes.js';
+import faqRoutes from './routes/faqRoutes.js';
+import aboutRoutes from './routes/aboutRoutes.js';
+import confessionRoutes from './routes/confessionRoutes.js';
 
 // Import seed functions
 import { seedDummyCourses } from './seedData.js';
 import { seedInternshipsAndHackathons } from './seedInternshipsHackathonsAuto.js';
+import { seedFAQs } from './seedFAQs.js';
+
+// Import cron services
+import { initializeUpdateCronJobs } from './services/updateCronService.js';
 
 // Initialize Express app
 const app = express();
@@ -72,6 +82,12 @@ const connectDB = async () => {
     
     // Auto-seed internships and hackathons on startup
     await seedInternshipsAndHackathons();
+    
+    // Auto-seed FAQs on startup (only if not already seeded)
+    await seedFAQs();
+    
+    // Initialize cron jobs for real-time updates
+    initializeUpdateCronJobs();
     
   } catch (error) {
     console.error('❌ MongoDB Connection Error:', error.message);
@@ -147,6 +163,114 @@ io.on('connection', (socket) => {
     socket.to(`meeting-${data.meetingId}`).emit('webrtc_ice_candidate', data);
   });
 
+  // Lecture Meeting Events
+  socket.on('join_lecture_meeting', (data) => {
+    const { lectureId, userId, userName, role } = data;
+    socket.join(`lecture-${lectureId}`);
+    socket.lectureId = lectureId;
+    socket.lectureRole = role;
+    
+    console.log(`📚 ${role} ${userName} joined lecture meeting: ${lectureId}`);
+    
+    // Notify others in the meeting
+    socket.to(`lecture-${lectureId}`).emit('participant_joined', {
+      userId,
+      userName,
+      role,
+      socketId: socket.id
+    });
+    
+    // Send current participants to the new joiner
+    io.in(`lecture-${lectureId}`).allSockets().then(sockets => {
+      socket.emit('current_participants', {
+        count: sockets.size - 1 // Exclude self
+      });
+    });
+  });
+
+  socket.on('leave_lecture_meeting', (data) => {
+    const { lectureId, userId, userName } = data;
+    socket.leave(`lecture-${lectureId}`);
+    
+    console.log(`👋 ${userName} left lecture meeting: ${lectureId}`);
+    
+    // Notify others
+    socket.to(`lecture-${lectureId}`).emit('participant_left', {
+      userId,
+      userName
+    });
+  });
+
+  // Video/Audio toggle events
+  socket.on('toggle_video', (data) => {
+    const { lectureId, userId, isVideoOn } = data;
+    socket.to(`lecture-${lectureId}`).emit('participant_video_toggle', {
+      userId,
+      isVideoOn
+    });
+  });
+
+  socket.on('toggle_audio', (data) => {
+    const { lectureId, userId, isAudioOn } = data;
+    socket.to(`lecture-${lectureId}`).emit('participant_audio_toggle', {
+      userId,
+      isAudioOn
+    });
+  });
+
+  // Screen sharing
+  socket.on('start_screen_share', (data) => {
+    const { lectureId, userId } = data;
+    socket.to(`lecture-${lectureId}`).emit('screen_share_started', { userId });
+  });
+
+  socket.on('stop_screen_share', (data) => {
+    const { lectureId, userId } = data;
+    socket.to(`lecture-${lectureId}`).emit('screen_share_stopped', { userId });
+  });
+
+  // Recording status
+  socket.on('recording_started', (data) => {
+    const { lectureId } = data;
+    io.in(`lecture-${lectureId}`).emit('recording_status', {
+      isRecording: true,
+      message: 'Recording started'
+    });
+  });
+
+  socket.on('recording_stopped', (data) => {
+    const { lectureId } = data;
+    io.in(`lecture-${lectureId}`).emit('recording_status', {
+      isRecording: false,
+      message: 'Recording stopped'
+    });
+  });
+
+  // Chat messages during lecture
+  socket.on('lecture_chat_message', (data) => {
+    const { lectureId, message, userName, userId, timestamp } = data;
+    io.in(`lecture-${lectureId}`).emit('lecture_chat_message', {
+      message,
+      userName,
+      userId,
+      timestamp
+    });
+  });
+
+  // Hand raise
+  socket.on('raise_hand', (data) => {
+    const { lectureId, userId, userName } = data;
+    socket.to(`lecture-${lectureId}`).emit('hand_raised', {
+      userId,
+      userName
+    });
+  });
+
+  socket.on('lower_hand', (data) => {
+    const { lectureId, userId } = data;
+    socket.to(`lecture-${lectureId}`).emit('hand_lowered', { userId });
+  });
+
   socket.on('disconnect', () => {
     if (socket.userId) {
       activeUsers.delete(socket.userId);
@@ -183,6 +307,12 @@ app.use('/api/internships', internshipRoutes);
 app.use('/api/hackathons', hackathonRoutes);
 app.use('/api/study-planner', studyPlannerRoutes);
 app.use('/api/career', careerAdvisorRoutes);
+app.use('/api/lectures', lectureRoutes);
+app.use('/api/updates', updateRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/faq', faqRoutes);
+app.use('/api/about', aboutRoutes);
+app.use('/api/confessions', confessionRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

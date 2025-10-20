@@ -106,9 +106,20 @@ router.get('/profile', protect, authorize('student', 'parent', 'teacher'), async
       });
     }
 
+    // Format recommendedPaths to flatten nested structure for frontend
+    const profileData = careerProfile.toObject();
+    if (profileData.recommendedPaths && profileData.recommendedPaths.length > 0) {
+      profileData.recommendedPaths = profileData.recommendedPaths.map(rp => ({
+        ...rp.path,
+        matchScore: rp.matchScore,
+        reasoning: rp.reasoning,
+        generatedAt: rp.generatedAt
+      }));
+    }
+
     res.status(200).json({
       success: true,
-      data: careerProfile
+      data: profileData
     });
   } catch (error) {
     console.error('Error fetching career profile:', error);
@@ -211,24 +222,48 @@ router.post('/analyze', protect, authorize('student'), async (req, res) => {
 
     const careerPaths = careerPathsResult.recommendations;
 
-    // Save recommended paths
-    careerProfile.recommendedPaths = careerPaths.map(path => ({
-      title: path.title,
-      description: path.description,
-      matchScore: path.matchScore,
-      requiredSkills: path.requiredSkills,
-      salaryRange: path.salaryRange,
-      topCompanies: path.topCompanies,
-      reasoning: path.reasoning,
-      generatedAt: new Date()
-    }));
+    console.log('AI returned paths:', JSON.stringify(careerPaths, null, 2));
+
+    // Validate and save recommended paths with nested structure matching schema
+    // AI returns: { path: {...}, matchScore: ..., reasoning: ... }
+    careerProfile.recommendedPaths = careerPaths.map(rec => {
+      const pathData = rec.path || rec; // Handle both formats
+      
+      // Ensure we have a valid title
+      if (!pathData.title) {
+        console.error('Path missing title:', rec);
+        throw new Error('AI returned career path without title');
+      }
+
+      return {
+        path: {
+          title: pathData.title,
+          description: pathData.description || 'Career path in technology/engineering',
+          requiredSkills: Array.isArray(pathData.requiredSkills) ? pathData.requiredSkills : [],
+          optionalSkills: Array.isArray(pathData.optionalSkills) ? pathData.optionalSkills : [],
+          salaryRange: pathData.averageSalary || pathData.salaryRange || { min: 300000, max: 1200000, currency: 'INR' },
+          topCompanies: Array.isArray(pathData.topCompanies) ? pathData.topCompanies : [],
+          status: 'recommended'
+        },
+        matchScore: rec.matchScore || 0,
+        reasoning: rec.reasoning || 'AI-generated career path recommendation',
+        generatedAt: new Date()
+      };
+    });
 
     await careerProfile.save();
+
+    // Return paths in the format frontend expects
+    const formattedPaths = careerProfile.recommendedPaths.map(rp => ({
+      ...rp.path,
+      matchScore: rp.matchScore,
+      reasoning: rp.reasoning
+    }));
 
     res.status(200).json({
       success: true,
       message: 'Career paths analyzed successfully',
-      data: careerPaths
+      data: formattedPaths
     });
   } catch (error) {
     console.error('Error analyzing career paths:', error);
@@ -254,8 +289,15 @@ router.get('/recommendations', protect, authorize('student'), async (req, res) =
       });
     }
 
-    // Return recommended paths
-    const sortedPaths = careerProfile.recommendedPaths.sort((a, b) => b.matchScore - a.matchScore);
+    // Return recommended paths (flatten nested structure for frontend)
+    const formattedPaths = careerProfile.recommendedPaths.map(rp => ({
+      ...rp.path,
+      matchScore: rp.matchScore,
+      reasoning: rp.reasoning,
+      generatedAt: rp.generatedAt
+    }));
+    
+    const sortedPaths = formattedPaths.sort((a, b) => b.matchScore - a.matchScore);
 
     res.status(200).json({
       success: true,
@@ -287,13 +329,26 @@ router.post('/choose-path', protect, authorize('student'), async (req, res) => {
       });
     }
 
-    // Find the path in recommended paths
-    const recommendedPath = careerProfile.recommendedPaths.find(p => p.title === pathTitle);
+    // Find the path in recommended paths (note: recommendedPaths has nested 'path' object)
+    const recommendedPathObj = careerProfile.recommendedPaths.find(p => p.path?.title === pathTitle);
 
-    if (!recommendedPath) {
+    if (!recommendedPathObj) {
+      console.log('Available paths:', careerProfile.recommendedPaths.map(p => p.path?.title || 'no title'));
+      console.log('Searching for:', pathTitle);
       return res.status(404).json({
         success: false,
         message: 'Career path not found in recommendations'
+      });
+    }
+
+    const recommendedPath = recommendedPathObj.path;
+
+    // Validate that we have the required data
+    if (!recommendedPath || !recommendedPath.title) {
+      console.error('Recommended path is invalid:', recommendedPath);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid career path data'
       });
     }
 
@@ -307,13 +362,16 @@ router.post('/choose-path', protect, authorize('student'), async (req, res) => {
       });
     }
 
-    // Add to chosen paths
+    // Add to chosen paths with all required fields
     careerProfile.chosenPaths.push({
-      title: recommendedPath.title || pathTitle,
+      title: recommendedPath.title,
       description: recommendedPath.description || 'Career path description',
       targetDate: targetDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default: 1 year
       requiredSkills: recommendedPath.requiredSkills || [],
-      salaryRange: recommendedPath.salaryRange || { min: 0, max: 0, currency: 'INR' }
+      optionalSkills: recommendedPath.optionalSkills || [],
+      salaryRange: recommendedPath.salaryRange || { min: 300000, max: 1200000, currency: 'INR' },
+      topCompanies: recommendedPath.topCompanies || [],
+      status: 'in-progress'
     });
 
     await careerProfile.save();
@@ -1115,11 +1173,24 @@ router.get('/dashboard', protect, authorize('student'), async (req, res) => {
       readinessAnalysis = await calculateReadinessScore(studentProfile, targetPath);
     }
 
+    // Flatten recommendedPaths structure for frontend (extract path object from nested structure)
+    const topRecommendations = (careerProfile.recommendedPaths || [])
+      .slice(0, 3)
+      .map(rec => {
+        // Handle nested structure: { path: {...}, matchScore, reasoning }
+        const pathData = rec.path || rec;
+        return {
+          ...pathData,
+          matchScore: rec.matchScore || pathData.matchScore,
+          reasoning: rec.reasoning || pathData.reasoning
+        };
+      });
+
     res.status(200).json({
       success: true,
       data: {
         profile: careerProfile,
-        topRecommendations: (careerProfile.recommendedPaths || []).slice(0, 3),
+        topRecommendations,
         criticalSkillGaps: (careerProfile.skillGaps || []).filter(g => g.importance === 'required').slice(0, 5),
         readinessScore: readinessAnalysis,
         recentQuizzes: (careerProfile.quizResults || []).slice(-3),
@@ -1131,6 +1202,448 @@ router.get('/dashboard', protect, authorize('student'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch dashboard data',
+      error: error.message
+    });
+  }
+});
+
+// ==================== AI CAREER CHAT ====================
+
+// @desc    Chat with AI career advisor
+// @route   POST /api/career/chat
+// @access  Private (Student)
+router.post('/chat', protect, authorize('student'), async (req, res) => {
+  try {
+    const { message, chatHistory } = req.body;
+
+    if (!message || message.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Message is required'
+      });
+    }
+
+    // Get student's career profile for context
+    const careerProfile = await CareerProfile.findOne({ usn: req.user.usn });
+    const student = await Student.findOne({ usn: req.user.usn });
+
+    // Build context for AI
+    const studentContext = {
+      name: req.user.name,
+      semester: student?.semester || 'N/A',
+      course: student?.course || 'N/A',
+      interests: careerProfile?.interests || [],
+      chosenPaths: careerProfile?.chosenPaths || [],
+      skills: careerProfile?.skills || [],
+      skillGaps: careerProfile?.skillGaps || [],
+      readinessScore: careerProfile?.readinessScore || null
+    };
+
+    // Call AI service for conversational response
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    // Build conversation context
+    let conversationHistory = '';
+    if (chatHistory && chatHistory.length > 0) {
+      conversationHistory = chatHistory.map(msg => 
+        `${msg.role === 'user' ? 'Student' : 'AI Career Advisor'}: ${msg.content}`
+      ).join('\n');
+    }
+
+    const prompt = `You are an expert AI Career Advisor helping a student with their career planning.
+
+Student Context:
+- Name: ${studentContext.name}
+- Course: ${studentContext.course}, Semester: ${studentContext.semester}
+- Interests: ${studentContext.interests.join(', ') || 'Not specified'}
+- Chosen Career Paths: ${studentContext.chosenPaths.map(p => p.title).join(', ') || 'None chosen yet'}
+- Current Skills: ${studentContext.skills.map(s => s.name).join(', ') || 'No skills recorded'}
+- Career Readiness Score: ${studentContext.readinessScore ? `${studentContext.readinessScore.overall}/100` : 'Not calculated'}
+
+${conversationHistory ? `Previous Conversation:\n${conversationHistory}\n` : ''}
+
+Student's Current Question: ${message}
+
+Provide a helpful, personalized, and actionable response. Be encouraging and specific. If suggesting resources or actions, make them concrete and achievable. Keep responses concise (2-4 paragraphs max).`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const aiResponse = response.text();
+
+    // Save chat to career profile
+    if (careerProfile) {
+      if (!careerProfile.chatHistory) {
+        careerProfile.chatHistory = [];
+      }
+
+      careerProfile.chatHistory.push({
+        userMessage: message,
+        aiResponse: aiResponse,
+        timestamp: new Date()
+      });
+
+      // Keep only last 50 messages to avoid document size issues
+      if (careerProfile.chatHistory.length > 50) {
+        careerProfile.chatHistory = careerProfile.chatHistory.slice(-50);
+      }
+
+      await careerProfile.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: aiResponse,
+        timestamp: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Error in AI chat:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process chat message',
+      error: error.message
+    });
+  }
+});
+
+// ==================== ADVANCED RESUME BUILDER ====================
+
+// @desc    Generate resume from scratch with AI
+// @route   POST /api/career/resume/generate
+// @access  Private (Student)
+router.post('/resume/generate', protect, authorize('student'), async (req, res) => {
+  try {
+    const { template, jobDescription, customSections } = req.body;
+
+    // Get student and career profile data (removed populate as currentCourse doesn't exist)
+    const student = await Student.findOne({ usn: req.user.usn });
+    const careerProfile = await CareerProfile.findOne({ usn: req.user.usn });
+    const grades = await Grade.find({ usn: req.user.usn }).sort({ createdAt: -1 }).limit(10);
+
+    if (!careerProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Career profile not found. Please create one first.'
+      });
+    }
+
+    // Prepare student data for AI
+    const studentData = {
+      name: req.user.name,
+      email: req.user.email,
+      usn: req.user.usn,
+      course: student?.course || 'N/A',
+      semester: student?.semester || 'N/A',
+      skills: careerProfile.skills || [],
+      chosenPaths: careerProfile.chosenPaths || [],
+      interests: careerProfile.interests || [],
+      achievements: customSections?.achievements || [],
+      projects: customSections?.projects || [],
+      experience: customSections?.experience || [],
+      certifications: customSections?.certifications || [],
+      grades: grades.map(g => ({
+        subject: g.subject,
+        percentage: ((g.marks / g.totalMarks) * 100).toFixed(1)
+      }))
+    };
+
+    // Call AI to generate resume content
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `You are an expert resume writer. Generate a professional, ATS-optimized resume based on the following information.
+
+Student Profile:
+- Name: ${studentData.name}
+- Email: ${studentData.email}
+- Course: ${studentData.course}, Semester: ${studentData.semester}
+- Skills: ${studentData.skills.map(s => s.name).join(', ') || 'No skills listed'}
+- Career Paths: ${studentData.chosenPaths.map(p => p.title).join(', ') || 'None chosen'}
+- Interests: ${studentData.interests.join(', ') || 'Not specified'}
+
+${jobDescription ? `Target Job Description:\n${jobDescription}\n` : ''}
+
+Template Style: ${template || 'Modern'}
+
+Generate a resume with these sections:
+1. Professional Summary (3-4 impactful sentences)
+2. Technical Skills (categorized)
+3. Education (with GPA/percentage)
+4. Projects (3-4 impressive projects with quantifiable results)
+5. Experience (if any internships/work)
+6. Certifications & Achievements
+7. Leadership & Extracurriculars
+
+Requirements:
+- Use action verbs (Led, Developed, Implemented, Achieved)
+- Include quantifiable metrics (improved by X%, reduced by Y)
+- Optimize keywords for ATS based on job description
+- Keep it to 1 page
+- Professional tone
+
+Return a JSON object with this structure:
+{
+  "summary": "Professional summary text",
+  "skills": {
+    "technical": ["skill1", "skill2"],
+    "soft": ["skill1", "skill2"],
+    "tools": ["tool1", "tool2"]
+  },
+  "education": [{
+    "degree": "degree name",
+    "institution": "institution name",
+    "year": "year",
+    "gpa": "gpa/percentage"
+  }],
+  "projects": [{
+    "title": "project name",
+    "description": "description with metrics",
+    "technologies": ["tech1", "tech2"],
+    "achievements": ["achievement1", "achievement2"]
+  }],
+  "experience": [{
+    "title": "position",
+    "company": "company name",
+    "duration": "duration",
+    "responsibilities": ["resp1", "resp2"]
+  }],
+  "certifications": ["cert1", "cert2"],
+  "achievements": ["achievement1", "achievement2"]
+}
+
+IMPORTANT: Return ONLY the JSON object, no explanations.`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    // Extract JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Failed to parse resume from AI response');
+    }
+    
+    const resumeData = JSON.parse(jsonMatch[0]);
+
+    // Save resume to career profile
+    const newResume = {
+      template: template || 'modern',
+      content: resumeData,
+      jobDescription: jobDescription || '',
+      generatedAt: new Date(),
+      lastModified: new Date()
+    };
+
+    if (!careerProfile.resumes) {
+      careerProfile.resumes = [];
+    }
+    
+    careerProfile.resumes.push(newResume);
+    await careerProfile.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume generated successfully',
+      data: newResume
+    });
+  } catch (error) {
+    console.error('Error generating resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate resume',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Optimize existing resume
+// @route   POST /api/career/resume/optimize
+// @access  Private (Student)
+router.post('/resume/optimize', protect, authorize('student'), async (req, res) => {
+  try {
+    const { resumeContent, jobDescription } = req.body;
+
+    if (!resumeContent) {
+      return res.status(400).json({
+        success: false,
+        message: 'Resume content is required'
+      });
+    }
+
+    // Call AI to optimize resume
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `You are an expert resume optimizer. Analyze and improve the following resume to make it ATS-friendly and impactful.
+
+Current Resume:
+${JSON.stringify(resumeContent, null, 2)}
+
+${jobDescription ? `Target Job Description:\n${jobDescription}\n` : ''}
+
+Provide optimization suggestions in these categories:
+1. ATS Keywords (missing keywords from job description)
+2. Action Verbs (replace weak verbs with strong ones)
+3. Quantifiable Metrics (add numbers and percentages)
+4. Formatting Issues (ATS-unfriendly elements)
+5. Content Improvements (what to add/remove)
+
+Return a JSON object:
+{
+  "optimizedResume": { ...optimized resume in same structure... },
+  "suggestions": {
+    "keywords": ["keyword1", "keyword2"],
+    "actionVerbs": [{"old": "did", "new": "implemented"}],
+    "metrics": ["Add percentage improvement in project X"],
+    "formatting": ["Issue and fix"],
+    "content": ["Suggestion 1", "Suggestion 2"]
+  },
+  "atsScore": 85
+}
+
+IMPORTANT: Return ONLY the JSON object.`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Failed to parse optimization from AI response');
+    }
+    
+    const optimizationData = JSON.parse(jsonMatch[0]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume optimized successfully',
+      data: optimizationData
+    });
+  } catch (error) {
+    console.error('Error optimizing resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to optimize resume',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get resume suggestions while typing
+// @route   POST /api/career/resume/suggest
+// @access  Private (Student)
+router.post('/resume/suggest', protect, authorize('student'), async (req, res) => {
+  try {
+    const { section, currentText, context } = req.body;
+
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `You are a resume writing assistant. Provide 3-5 suggestions to improve this resume section.
+
+Section: ${section}
+Current Text: ${currentText}
+Context: ${context || 'General improvement'}
+
+Provide actionable suggestions with:
+- Stronger action verbs
+- Quantifiable metrics
+- ATS-optimized keywords
+- Professional tone
+
+Return a JSON array of suggestions:
+["Suggestion 1", "Suggestion 2", "Suggestion 3"]
+
+IMPORTANT: Return ONLY the JSON array.`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Failed to parse suggestions from AI response');
+    }
+    
+    const suggestions = JSON.parse(jsonMatch[0]);
+
+    res.status(200).json({
+      success: true,
+      data: suggestions
+    });
+  } catch (error) {
+    console.error('Error getting resume suggestions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get suggestions',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get all saved resumes
+// @route   GET /api/career/resume/list
+// @access  Private (Student)
+router.get('/resume/list', protect, authorize('student'), async (req, res) => {
+  try {
+    const careerProfile = await CareerProfile.findOne({ usn: req.user.usn });
+
+    if (!careerProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Career profile not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: careerProfile.resumes || []
+    });
+  } catch (error) {
+    console.error('Error fetching resumes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch resumes',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Delete a resume
+// @route   DELETE /api/career/resume/:id
+// @access  Private (Student)
+router.delete('/resume/:id', protect, authorize('student'), async (req, res) => {
+  try {
+    const careerProfile = await CareerProfile.findOne({ usn: req.user.usn });
+
+    if (!careerProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Career profile not found'
+      });
+    }
+
+    careerProfile.resumes = careerProfile.resumes.filter(
+      r => r._id.toString() !== req.params.id
+    );
+
+    await careerProfile.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete resume',
       error: error.message
     });
   }

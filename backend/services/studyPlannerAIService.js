@@ -25,31 +25,46 @@ class StudyPlannerAIService {
   async generateWeeklySchedule(studentData) {
     try {
       const { 
-        subjects, 
+        subjects = [], 
         weakSubjects = [], 
         attendanceData = [], 
         upcomingExams = [], 
         assignments = [],
-        preferences = {}
+        preferences = {},
+        recentGrades = []
       } = studentData || {};
 
       const prompt = `
-You are an AI study planner assistant. Generate an optimized weekly study schedule for a college student.
+You are an AI study planner assistant. Generate an optimized weekly study schedule for a college student based on their detailed preferences.
 
-Student Context:
-- Subjects: ${(subjects || []).join(', ') || 'No subjects specified'}
-- Weak Subjects (need more focus): ${(weakSubjects || []).map(ws => `${ws.subject} (Current: ${ws.currentGrade}%)`).join(', ') || 'None'}
-- Study Hours Per Day: ${preferences?.studyHoursPerDay || 4} hours
-- Upcoming Exams: ${(upcomingExams || []).map(e => `${e.subject} on ${e.date}`).join(', ') || 'None'}
-- Pending Assignments: ${(assignments || []).map(a => `${a.subject} - Due: ${a.dueDate}`).join(', ') || 'None'}
+Student Profile:
+- Name: ${studentData?.name || 'Student'}
+- Semester: ${studentData?.semester || 'N/A'}
+- Subjects: ${(subjects || []).join(', ') || 'General subjects'}
+- Weak Subjects (need extra focus): ${(weakSubjects || []).map(ws => `${ws.subject} (Current: ${ws.currentGrade}%)`).join(', ') || 'None identified'}
 
-Requirements:
-1. Allocate MORE time to weak subjects
-2. Balance study time across all subjects
-3. Include breaks every 2 hours
+Study Preferences:
+- Daily Study Hours: ${preferences?.studyHoursPerDay || 4} hours
+- Preferred Study Time: ${preferences?.preferredStudyTime || 'flexible'}
+- Break Duration: ${preferences?.breakDuration || 15} minutes
+- Additional Preferences: ${preferences?.studyPreferences || 'None specified'}
+
+Upcoming Commitments:
+- Exams: ${(upcomingExams || []).join(', ') || 'None scheduled'}
+- Pending Assignments: ${(assignments || []).map(a => `${a.title} (${a.subject}) - Due: ${new Date(a.dueDate).toLocaleDateString()}`).join(', ') || 'None'}
+
+Recent Academic Performance:
+${(recentGrades || []).map(g => `- ${g.subject}: ${g.percentage}%`).join('\n') || 'No recent grades available'}
+
+Generate a DETAILED weekly study schedule following these requirements:
+1. Allocate MORE study time to weak subjects (subjects below 60%)
+2. Schedule difficult subjects during the student's preferred study time
+3. Include ${preferences?.breakDuration || 15}-minute breaks after every study session
 4. Prioritize subjects with upcoming exams
-5. Include revision sessions
-6. Leave weekends lighter with review sessions
+5. Include a mix of: new topic learning, practice problems, and revision
+6. Make weekends lighter with review and consolidation sessions
+7. Ensure ${preferences?.studyHoursPerDay || 4} hours of study per day
+8. Create specific, actionable tasks for each time slot
 
 Return a JSON array with this structure:
 [

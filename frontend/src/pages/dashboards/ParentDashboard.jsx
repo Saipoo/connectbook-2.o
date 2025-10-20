@@ -16,7 +16,10 @@ import {
   Briefcase,
   ChevronRight,
   Code,
-  Trophy
+  Trophy,
+  HelpCircle,
+  Info,
+  Heart
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
@@ -355,11 +358,32 @@ const ParentDashboard = () => {
               Mentor Connect
             </Link>
             <Link
+              to="/dashboard/parent/faq"
+              className="btn btn-primary flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+            >
+              <HelpCircle className="w-5 h-5" />
+              FAQs & Help
+            </Link>
+            <Link
+              to="/dashboard/parent/about"
+              className="btn btn-primary flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+            >
+              <Info className="w-5 h-5" />
+              About
+            </Link>
+            <Link
               to="/dashboard/parent/grade-viewer"
               className="btn btn-primary flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
             >
               <TrendingUp className="w-5 h-5" />
               Grade Reports
+            </Link>
+            <Link
+              to="/dashboard/parent/student-wellbeing"
+              className="btn btn-primary flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            >
+              <Heart className="w-5 h-5" />
+              Student Wellbeing
             </Link>
             <button
               onClick={fetchDashboardData}

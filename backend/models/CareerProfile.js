@@ -359,7 +359,45 @@ const careerProfileSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+
+  // AI Chat History
+  chatHistory: [{
+    userMessage: {
+      type: String,
+      required: true
+    },
+    aiResponse: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+
+  // Resume Builder
+  resumes: [{
+    template: {
+      type: String,
+      enum: ['modern', 'classic', 'technical', 'creative'],
+      default: 'modern'
+    },
+    content: {
+      type: mongoose.Schema.Types.Mixed,
+      required: true
+    },
+    jobDescription: String,
+    generatedAt: {
+      type: Date,
+      default: Date.now
+    },
+    lastModified: {
+      type: Date,
+      default: Date.now
+    }
+  }]
   
 }, { timestamps: true });
 

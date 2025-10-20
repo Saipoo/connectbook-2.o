@@ -21,6 +21,17 @@ const StudyPlanner = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddTask, setShowAddTask] = useState(false);
+  const [showScheduleWizard, setShowScheduleWizard] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [scheduleData, setScheduleData] = useState({
+    studyHoursPerDay: 4,
+    preferredStudyTime: 'morning',
+    breakDuration: 15,
+    subjects: [],
+    upcomingExams: [],
+    weakSubjects: [],
+    studyPreferences: ''
+  });
   const [newTask, setNewTask] = useState({
     title: '',
     subject: '',
@@ -117,7 +128,7 @@ const StudyPlanner = () => {
     try {
       const token = localStorage.getItem('token');
       
-      await axios.put(
+      const response = await axios.put(
         `${API_URL}/api/study-planner/task/${taskId}`,
         {
           planId: dashboardData?.plan?._id,
@@ -127,30 +138,45 @@ const StudyPlanner = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      fetchDashboard();
+      if (response.data.success) {
+        // Force refresh the dashboard data
+        await fetchDashboard();
+        alert('✅ Task marked as completed!');
+      }
     } catch (error) {
       console.error('Error completing task:', error);
+      alert('Failed to complete task. Please try again.');
     }
   };
 
-  const generateSchedule = async () => {
+  const handleScheduleWizardSubmit = async (e) => {
+    e.preventDefault();
+    
     try {
       const token = localStorage.getItem('token');
       
       const response = await axios.post(
         `${API_URL}/api/study-planner/generate-schedule`,
-        { planId: dashboardData?.plan?._id },
+        { 
+          planId: dashboardData?.plan?._id,
+          preferences: scheduleData
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.success) {
+        setShowScheduleWizard(false);
         alert('✨ AI Schedule generated successfully!');
-        fetchDashboard();
+        await fetchDashboard();
       }
     } catch (error) {
       console.error('Error generating schedule:', error);
-      alert('Failed to generate schedule');
+      alert('Failed to generate schedule. Please try again.');
     }
+  };
+
+  const generateSchedule = () => {
+    setShowScheduleWizard(true);
   };
 
   const syncWeakSubjects = async () => {
@@ -480,34 +506,72 @@ const StudyPlanner = () => {
             {activeTab === 'schedule' && (
               <div>
                 {plan?.weeklySchedule && plan.weeklySchedule.length > 0 ? (
-                  <div className="space-y-4">
-                    {plan.weeklySchedule.map((day, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="font-semibold text-lg text-gray-900 mb-3">
+                  <div className="space-y-6">
+                    {/* Day Selector */}
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {plan.weeklySchedule.map((day, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedDay(selectedDay === index ? null : index)}
+                          className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                            selectedDay === index
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
                           {day.day}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Selected Day Schedule */}
+                    {selectedDay !== null ? (
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="bg-indigo-50 p-4 border-b">
+                          <h3 className="font-bold text-xl text-indigo-900">
+                            {plan.weeklySchedule[selectedDay].day}'s Schedule
+                          </h3>
                         </div>
                         
-                        <div className="space-y-2">
-                          {(day.tasks || []).map((task, taskIndex) => (
+                        <div className="p-4 space-y-2">
+                          {(plan.weeklySchedule[selectedDay].slots || []).map((slot, slotIndex) => (
                             <div
-                              key={taskIndex}
-                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                              key={slotIndex}
+                              className={`flex items-center gap-3 p-4 rounded-lg transition hover:shadow-md ${
+                                slot.type === 'break' 
+                                  ? 'bg-green-50 border border-green-200' 
+                                  : 'bg-indigo-50 border border-indigo-200'
+                              }`}
                             >
-                              <div className="flex-shrink-0 text-sm font-medium text-indigo-600 min-w-[100px]">
-                                {task.timeSlot}
+                              <div className="flex-shrink-0">
+                                <Clock className={`w-5 h-5 ${slot.type === 'break' ? 'text-green-600' : 'text-indigo-600'}`} />
+                              </div>
+                              <div className="flex-shrink-0 text-sm font-bold text-gray-700 min-w-[120px]">
+                                {slot.startTime} - {slot.endTime}
                               </div>
                               <div className="flex-1">
-                                <div className="font-medium text-gray-900">{task.subject}</div>
-                                <div className="text-sm text-gray-600">{task.topic}</div>
+                                <div className={`font-semibold ${slot.type === 'break' ? 'text-green-900' : 'text-indigo-900'}`}>
+                                  {slot.subject}
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">{slot.activity}</div>
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {task.duration}
+                              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                slot.type === 'break' 
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-indigo-100 text-indigo-700'
+                              }`}>
+                                {slot.type}
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed">
+                        <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-600 font-medium">Select a day to view the schedule</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
@@ -693,6 +757,151 @@ const StudyPlanner = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI Schedule Generation Wizard Modal */}
+      {showScheduleWizard && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <Calendar className="w-6 h-6 text-indigo-600" />
+                    AI Schedule Generator
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Tell us about your study preferences and we'll create an optimized schedule
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowScheduleWizard(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleScheduleWizardSubmit} className="space-y-6">
+                {/* Study Hours */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    How many hours can you study per day?
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    required
+                    value={scheduleData.studyHoursPerDay}
+                    onChange={(e) => setScheduleData({ ...scheduleData, studyHoursPerDay: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., 4"
+                  />
+                </div>
+
+                {/* Preferred Study Time */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    When do you study best?
+                  </label>
+                  <select
+                    value={scheduleData.preferredStudyTime}
+                    onChange={(e) => setScheduleData({ ...scheduleData, preferredStudyTime: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="morning">Early Morning (5 AM - 9 AM)</option>
+                    <option value="mid-morning">Mid Morning (9 AM - 12 PM)</option>
+                    <option value="afternoon">Afternoon (12 PM - 5 PM)</option>
+                    <option value="evening">Evening (5 PM - 9 PM)</option>
+                    <option value="night">Night (9 PM - 12 AM)</option>
+                    <option value="flexible">Flexible / Any time</option>
+                  </select>
+                </div>
+
+                {/* Break Duration */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preferred break duration (minutes)
+                  </label>
+                  <select
+                    value={scheduleData.breakDuration}
+                    onChange={(e) => setScheduleData({ ...scheduleData, breakDuration: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="5">5 minutes</option>
+                    <option value="10">10 minutes</option>
+                    <option value="15">15 minutes</option>
+                    <option value="20">20 minutes</option>
+                    <option value="30">30 minutes</option>
+                  </select>
+                </div>
+
+                {/* Subjects Focus */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Which subjects need more focus? (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={scheduleData.subjects}
+                    onChange={(e) => setScheduleData({ ...scheduleData, subjects: e.target.value.split(',').map(s => s.trim()).filter(s => s) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., Mathematics, Physics, Data Structures"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter subjects separated by commas
+                  </p>
+                </div>
+
+                {/* Upcoming Exams */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Do you have any upcoming exams? (comma-separated with dates)
+                  </label>
+                  <textarea
+                    value={scheduleData.upcomingExams}
+                    onChange={(e) => setScheduleData({ ...scheduleData, upcomingExams: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    rows="3"
+                    placeholder="e.g., Mathematics - March 25, Physics - March 28"
+                  />
+                </div>
+
+                {/* Additional Preferences */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Any additional study preferences or constraints?
+                  </label>
+                  <textarea
+                    value={scheduleData.studyPreferences}
+                    onChange={(e) => setScheduleData({ ...scheduleData, studyPreferences: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    rows="3"
+                    placeholder="e.g., I prefer to study difficult subjects in the morning, I need more practice in coding, etc."
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleWizard(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                    Generate AI Schedule
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
