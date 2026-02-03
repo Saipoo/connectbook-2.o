@@ -53,6 +53,15 @@ import ParentWellbeingPage from './pages/ParentWellbeingPage';
 import AdminConfessionPage from './pages/AdminConfessionPage';
 import MyConfessionsPage from './pages/MyConfessionsPage';
 
+// SEO Landing Pages
+import AIAttendanceSystem from './pages/landing/AIAttendanceSystem';
+import SmartCampusManagement from './pages/landing/SmartCampusManagement';
+import StudentPerformanceAnalytics from './pages/landing/StudentPerformanceAnalytics';
+import AIInterviewSimulator from './pages/landing/AIInterviewSimulator';
+import SmartStudyPlanner from './pages/landing/SmartStudyPlanner';
+import CareerGuidanceAdvisor from './pages/landing/CareerGuidanceAdvisor';
+import FacialRecognitionGeotagging from './pages/landing/FacialRecognitionGeotagging';
+
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
@@ -76,6 +85,15 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* SEO Landing Pages */}
+        <Route path="/landing/ai-attendance-system" element={<AIAttendanceSystem />} />
+        <Route path="/landing/smart-campus-management" element={<SmartCampusManagement />} />
+        <Route path="/landing/student-performance-analytics" element={<StudentPerformanceAnalytics />} />
+        <Route path="/landing/ai-interview-simulator" element={<AIInterviewSimulator />} />
+        <Route path="/landing/smart-study-planner" element={<SmartStudyPlanner />} />
+        <Route path="/landing/career-guidance" element={<CareerGuidanceAdvisor />} />
+        <Route path="/landing/facial-recognition-attendance" element={<FacialRecognitionGeotagging />} />
 
           {/* Student Routes */}
           <Route path="/dashboard/student" element={
