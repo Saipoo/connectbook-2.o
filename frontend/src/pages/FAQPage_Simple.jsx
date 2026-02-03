@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Search, HelpCircle } from 'lucide-react';
+import BackToHome from '../components/BackToHome';
 
 const FAQPage = ({ userRole = 'student' }) => {
   const [expandedFAQ, setExpandedFAQ] = useState(null);
@@ -238,6 +239,9 @@ const FAQPage = ({ userRole = 'student' }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+      {/* Back to Home Button */}
+      <BackToHome variant="icon" position="top-right" />
+      
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div

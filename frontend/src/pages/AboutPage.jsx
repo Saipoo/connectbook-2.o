@@ -5,6 +5,7 @@ import {
   Loader, CheckCircle, XCircle, Send, Heart 
 } from 'lucide-react';
 import axios from 'axios';
+import BackToHome from '../components/BackToHome';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
@@ -102,6 +103,9 @@ const AboutPage = ({ userRole = 'student' }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Back to Home Button */}
+      <BackToHome variant="button" position="top-left" />
+      
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0 }}

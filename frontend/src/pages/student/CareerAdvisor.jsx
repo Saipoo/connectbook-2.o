@@ -18,6 +18,7 @@ import {
   Send,
   X
 } from 'lucide-react';
+import BackToHome from '../../components/BackToHome';
 
 const CareerAdvisor = () => {
   const { user } = useAuth();
@@ -498,6 +499,9 @@ const CareerAdvisor = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* Back to Home Button */}
+      <BackToHome variant="icon" position="top-right" />
+      
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">

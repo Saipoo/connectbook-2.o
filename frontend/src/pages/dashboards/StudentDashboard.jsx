@@ -115,17 +115,20 @@ const StudentDashboard = () => {
       <aside
         className={`${
           sidebarOpen ? 'w-64' : 'w-0'
-        } bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 overflow-hidden fixed lg:sticky top-0 h-screen z-40`}
+        } bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 overflow-hidden fixed lg:sticky top-0 h-screen z-40 flex flex-col`}
       >
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
+        <div className="p-6 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-6">
             <ScanFace className="w-8 h-8 text-primary-600" />
             <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
               ConnectBook
             </span>
           </div>
+        </div>
 
-          <div className="space-y-2">
+        {/* Scrollable Menu Container */}
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="space-y-1">
             <SidebarLink
               to="/dashboard/student/face-register"
               icon={ScanFace}

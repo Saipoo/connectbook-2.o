@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import StudentMeetingRoom from '../../components/meetings/StudentMeetingRoom';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://connectbook-backend.onrender.com';
 
 const StudentLectures = () => {
   const [lectures, setLectures] = useState([]);

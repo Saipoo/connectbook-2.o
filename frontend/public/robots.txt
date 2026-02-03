@@ -1,0 +1,13 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow specific paths
+Disallow: /api/
+Disallow: /dashboard/student/
+Disallow: /dashboard/teacher/
+Disallow: /dashboard/parent/
+Disallow: /dashboard/admin/
+
+# Sitemap location
+Sitemap: https://connectbook-2o.vercel.app/sitemap.xml
