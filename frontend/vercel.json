@@ -1,20 +1,8 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/google799333dad1eac28b.html",
-      "dest": "/google799333dad1eac28b.html"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/robots.txt"
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "/sitemap.xml"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
