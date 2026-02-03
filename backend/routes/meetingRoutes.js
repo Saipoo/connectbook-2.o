@@ -22,7 +22,7 @@ const generateMeetingLink = (meetingId) => {
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
-  return `${process.env.FRONTEND_URL || 'http://localhost:5173'}/meeting/${meetingId}?token=${token}`;
+  return `${process.env.FRONTEND_URL || 'https://connectbook-2o.vercel.app'}/meeting/${meetingId}?token=${token}`;
 };
 
 // @route   POST /api/mentor/connect/meeting/create
